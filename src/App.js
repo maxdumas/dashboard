@@ -1,20 +1,37 @@
-import detectEthereumProvider from '@metamask/detect-provider';
-import harvest from './lib/index.js';
+import detectEthereumProvider from "@metamask/detect-provider";
+import styled from "styled-components";
+import harvest from "./lib/index.js";
 
-import React from 'react';
-import './App.css';
-import {MainTable, UnderlyingTable} from './components/MainTable.js';
+import React from "react";
+import Alert from "./components/Alert";
+import Button from "./components/Button";
+import Footer from "./components/Footer";
+import { MainTable, UnderlyingTable } from "./components/MainTable.js";
 
-const {ethers, utils} = harvest;
+const { ethers, utils } = harvest;
+
+const Header = styled.header`
+  font-size 24px;
+  font-weight: bold;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Container = styled.main`
+  max-width: 750px;
+  margin: 0px auto;
+  text-align: center;
+`;
 
 class App extends React.Component {
-
   constructor(props) {
     super(props);
     this.state = {
       provider: undefined,
       signer: undefined,
-      address: '',
+      address: "",
       manager: undefined,
       summaries: [],
       underlyings: [],
@@ -28,16 +45,20 @@ class App extends React.Component {
     let signer;
     try {
       signer = provider.getSigner();
-    } catch (e) {console.log(e)}
-    const manager = harvest.manager.PoolManager.allPastPools(signer ? signer : provider);
+    } catch (e) {
+      console.log(e);
+    }
+    const manager = harvest.manager.PoolManager.allPastPools(
+      signer ? signer : provider
+    );
 
-    this.setState({provider, signer, manager});
+    this.setState({ provider, signer, manager });
 
-    window.ethereum.on('accountsChanged', () => {
+    window.ethereum.on("accountsChanged", () => {
       this.setState({
         provider: undefined,
         signer: undefined,
-        address: '',
+        address: "",
         manager: undefined,
         summaries: [],
         underlyings: [],
@@ -45,57 +66,61 @@ class App extends React.Component {
       });
     });
 
-
-    console.log({provider, signer, manager})
+    console.log({ provider, signer, manager });
 
     // get the user address
-    signer.getAddress()
-      .then((address) => this.setState({address}));
+    signer.getAddress().then((address) => this.setState({ address }));
   }
 
   connectMetamask() {
-    detectEthereumProvider()
-      .then((provider) => {
-        window.ethereum.enable()
-          .then(() => this.setProvider(provider))
-      });
+    detectEthereumProvider().then((provider) => {
+      window.ethereum.enable().then(() => this.setProvider(provider));
+    });
   }
 
   refreshButtonAction() {
-    console.log('refreshing')
-    this.state.manager.aggregateUnderlyings(this.state.address)
-      .then((underlying) => underlying.toList().filter((u) => !u.balance.isZero()))
-      .then((underlyings) => {
-        this.setState({underlyings});
-        return underlyings
-      })
-
-    this.state.manager.summary(this.state.address)
-      .then(summaries => summaries
-        .filter((p) => !p.summary.earnedRewards.isZero()
-                        || !p.summary.stakedBalance.isZero()
-                        || (p.summary.isActive && !p.summary.unstakedBalance.isZero())
-                        )
+    console.log("refreshing");
+    this.state.manager
+      .aggregateUnderlyings(this.state.address)
+      .then((underlying) =>
+        underlying.toList().filter((u) => !u.balance.isZero())
       )
-      .then(summaries => {
+      .then((underlyings) => {
+        this.setState({ underlyings });
+        return underlyings;
+      });
+
+    this.state.manager
+      .summary(this.state.address)
+      .then((summaries) =>
+        summaries.filter(
+          (p) =>
+            !p.summary.earnedRewards.isZero() ||
+            !p.summary.stakedBalance.isZero() ||
+            (p.summary.isActive && !p.summary.unstakedBalance.isZero())
+        )
+      )
+      .then((summaries) => {
         let total = ethers.BigNumber.from(0);
         summaries.forEach((pos) => {
-          total = total.add(pos.summary.usdValueOf)
+          total = total.add(pos.summary.usdValueOf);
         });
-        this.setState({summaries, usdValue: total});
+        this.setState({ summaries, usdValue: total });
         return summaries;
-      })
+      });
   }
 
   harvestButtonAction() {
-    console.log('harvesting');
+    console.log("harvesting");
     const minHarvestInput = document.getElementById("minHarvest").value;
-    const minHarvest = minHarvestInput ? ethers.utils.parseUnits(minHarvestInput, 18) : ethers.constants.WeiPerEther.div(10);
+    const minHarvest = minHarvestInput
+      ? ethers.utils.parseUnits(minHarvestInput, 18)
+      : ethers.constants.WeiPerEther.div(10);
     this.state.manager.getRewards(minHarvest);
   }
 
   exitInactiveButtonAction() {
-    console.log('exiting inactive');
+    console.log("exiting inactive");
     this.state.manager.exitInactive();
   }
 
@@ -108,9 +133,11 @@ class App extends React.Component {
     const table = this.renderMainTable();
     const underlyingTable = this.renderUnderlyingTable();
     return (
-      <div className="App">
-        <header className="App-header">
+      <>
+        <Header>
           <h1>Harvest Finance Dashboard</h1>
+        </Header>
+        <Container>
           {connectBtn}
           {refreshBtn}
           {table}
@@ -120,30 +147,21 @@ class App extends React.Component {
             {exitInactive}
           </div>
           {underlyingTable}
-          <div id="footer">
-            <p>Add assets to wallet: &nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-farm/">FARM</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-fusdc/">fUSDC</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-fusdt/">fUSDT</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-fdai/">fDAI</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-fwbtc/">fwBTC</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-frenbtc/">frenBTC</a>&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://harvestfi.github.io/add-fcrvrenwbtc/">fcrvRenWBTC</a>&nbsp;
-            </p>
-            <p>Contribute to&nbsp;
-              <a target="_blank" rel="noopener noreferrer" href="https://farm.chainwiki.dev">Harvest Wiki</a>&nbsp;
-              or 0x84BB14595Fd30a53cbE18e68085D42645901D8B6
-            </p>
-          </div>
-        </header>
-      </div>
+          <Footer />
+        </Container>
+      </>
     );
   }
 
   renderNAV() {
     if (this.state.summaries.length !== 0) {
       const formatted = utils.prettyMoney(this.state.usdValue);
-      return <p>Your staked assets and earned rewards are worth about <strong>{formatted}</strong></p>;
+      return (
+        <p>
+          Your staked assets and earned rewards are worth about{" "}
+          <strong>{formatted}</strong>
+        </p>
+      );
     }
     return <div></div>;
   }
@@ -158,66 +176,114 @@ class App extends React.Component {
   renderUnderlyingTable() {
     if (this.state.underlyings.length !== 0) {
       return (
-      <div>
-        <p>
-          Your position includes LP tokens that can be redeemed for the following:
-        </p>
-        <UnderlyingTable data={this.state.underlyings}></UnderlyingTable>
-      </div>
+        <div>
+          <p>
+            Your position includes LP tokens that can be redeemed for the
+            following:
+          </p>
+          <UnderlyingTable data={this.state.underlyings}></UnderlyingTable>
+        </div>
       );
     }
-    return <div></div>
+    return <div></div>;
   }
 
   renderConnectStatus() {
     if (!this.state.provider) {
-      return <div>
-        Start here: <button onClick={this.connectMetamask.bind(this)}>Connect Wallet</button>
-      </div>;
+      return (
+        <Alert>
+          You haven't connected a wallet.
+          <Button onClick={this.connectMetamask.bind(this)}>
+            Connect Wallet
+          </Button>
+        </Alert>
+      );
     }
-    return <p>Your wallet address is: <span id="address"><a target="_blank" rel="noopener noreferrer" href={this.state.address ? "https://etherscan.io/address/" + this.state.address : "#"}>{this.state.address || "not connected"}</a></span></p>;
+    return (
+      <p>
+        Your wallet address is:{" "}
+        <span id="address">
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={
+              this.state.address
+                ? "https://etherscan.io/address/" + this.state.address
+                : "#"
+            }
+          >
+            {this.state.address || "not connected"}
+          </a>
+        </span>
+      </p>
+    );
   }
 
   renderHarvestAll() {
-    if (this.state.summaries.length !== 0){
+    if (this.state.summaries.length !== 0) {
       const harvestBtn = this.renderHarvestButton();
       return (
         <p>
-          Harvest all farms with at least <input type="text" id="minHarvest" placeholder="min"></input> FARM rewards {harvestBtn}
-        </p>);
+          Harvest all farms with at least{" "}
+          <input type="text" id="minHarvest" placeholder="min"></input> FARM
+          rewards {harvestBtn}
+        </p>
+      );
     }
     return <div></div>;
   }
 
   renderRefreshButton() {
-    const buttonText = (this.state.summaries.length === 0) ? 'Click to load the table!' : 'Refresh Table';
+    if (!this.state.provider) {
+      return null;
+    }
 
-    return <div>
-      <button
-        disabled={!this.state.provider}
-        onClick={this.refreshButtonAction.bind(this)}
-      >{buttonText}</button>
-    </div>;
+    const buttonText =
+      this.state.summaries.length === 0
+        ? "Click to load the table!"
+        : "Refresh Table";
+
+    return (
+      <div>
+        <Button
+          disabled={!this.state.provider}
+          onClick={this.refreshButtonAction.bind(this)}
+        >
+          {buttonText}
+        </Button>
+      </div>
+    );
   }
 
   renderHarvestButton() {
-    return <button
-      disabled={!this.state.provider}
-      onClick={this.harvestButtonAction.bind(this)}
-    >Harvest All</button>
+    return (
+      <Button
+        disabled={!this.state.provider}
+        onClick={this.harvestButtonAction.bind(this)}
+      >
+        Harvest All
+      </Button>
+    );
   }
 
   renderExitInactiveButton() {
-    let inactivePools = this.state.summaries.filter((sum) => sum.stakedBalance && !sum.isActive);
+    let inactivePools = this.state.summaries.filter(
+      (sum) => sum.stakedBalance && !sum.isActive
+    );
     if (inactivePools.length !== 0) {
-      return <div><button
-        disabled={!this.state.provider}
-        onClick={this.exitInactiveButtonAction.bind(this)}
-      >Exit inactive pools</button></div>;
+      return (
+        <div>
+          <Button
+            disabled={!this.state.provider}
+            onClick={this.exitInactiveButtonAction.bind(this)}
+          >
+            Exit inactive pools
+          </Button>
+        </div>
+      );
     }
     return <div></div>;
   }
 }
-
 
 export default App;

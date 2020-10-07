@@ -1,14 +1,34 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import * as serviceWorker from './serviceWorker';
+import React from "react";
+import ReactDOM from "react-dom";
+import { createGlobalStyle } from "styled-components";
+import { reset } from "styled-reset";
+import App from "./App";
+import * as serviceWorker from "./serviceWorker";
+import background from "./background-sky.jpg";
+
+const GlobalStyle = createGlobalStyle`
+  ${reset}
+
+  html {
+    background-image: url(${background});
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: left bottom;
+    height: 100%;
+  }
+  
+  body {
+    font-family: Helvetica, sans-serif;
+  }
+`;
 
 ReactDOM.render(
   <React.StrictMode>
+    <GlobalStyle />
     <App />
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById("root")
 );
 
 // If you want your app to work offline and load faster, you can change
